@@ -2,39 +2,53 @@ package edu.ap.jaxrs;
 
 import java.io.*;
 import java.util.*;
+import java.util.logging.XMLFormatter;
 
 import javax.enterprise.context.RequestScoped;
+import javax.json.JsonObject;
+import javax.json.spi.JsonProvider;
 import javax.ws.rs.*;
 import javax.xml.bind.*;
+import javax.json.*;
+
+//import org.json.simple.JSONArray;
+//import org.json.simple.JSONObject;
+//import org.json.simple.parser.JSONParser;
 
 @RequestScoped
 @Path("/products")
 public class ProductResource {
 	
+	public static final String JSON_FILE="/Users/philippepossemiers/Desktop/Products.json";
+	
 	@GET
 	@Produces({"text/html"})
-	public String getProductsHTML() {
+	public String getProductsHTML() {	
 		String htmlString = "<html><body>";
-		try {
-			JAXBContext jaxbContext1 = JAXBContext.newInstance(ProductsXML.class);
-			Unmarshaller jaxbUnmarshaller = jaxbContext1.createUnmarshaller();
-			File XMLfile = new File("/Users/philippepossemiers/Desktop/Products.xml");
-			ProductsXML productsXML = (ProductsXML)jaxbUnmarshaller.unmarshal(XMLfile);
-			ArrayList<Product> listOfProducts = productsXML.getProducts();
-			
-			for(Product product : listOfProducts) {
-				htmlString += "<b>ShortName : " + product.getShortname() + "</b><br>";
-				htmlString += "Id : " + product.getId() + "<br>";
-				htmlString += "SKU : " + product.getSku() + "<br>";
-				htmlString += "Brand : " + product.getBrand() + "<br>";
-				htmlString += "Description : " + product.getDescription() + "<br>";
-				htmlString += "Price : " + product.getPrice() + "<br>";
+		
+	       
+		 
+        try {
+        	
+        	InputStream fis = new FileInputStream(JSON_FILE);
+	        JsonReader jsonReader = Json.createReader(fis);
+	        JsonObject jsonObject = jsonReader.readObject();
+	        JsonArray jsonArray = jsonObject.getJsonArray("products");
+	        
+	        int index = 0;
+	        for(JsonValue value : jsonArray){
+	        	JsonObject strings = jsonArray.getJsonObject(index++);
+	        	htmlString += "<b>ShortName : " + strings.getString("name") + "</b><br>";
+				htmlString += "Id : " + strings.getString("id") + "<br>";
+				htmlString += "Brand : " + strings.getString("brand") + "<br>";
+				htmlString += "Description : " + strings.getString("description") + "<br>";
+				htmlString += "Price : " + strings.getString("price")+ "<br>";
 				htmlString += "<br><br>";
-			}
-		} 
-		catch (JAXBException e) {
-		   e.printStackTrace();
-		}
+	        }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
 		return htmlString;
 	}
 	
@@ -43,25 +57,26 @@ public class ProductResource {
 	public String getProductsJSON() {
 		String jsonString = "{\"products\" : [";
 		try {
-			JAXBContext jaxbContext1 = JAXBContext.newInstance(ProductsXML.class);
-			Unmarshaller jaxbUnmarshaller = jaxbContext1.createUnmarshaller();
-			File XMLfile = new File("/Users/philippepossemiers/Desktop/Products.xml");
-			ProductsXML productsXML = (ProductsXML)jaxbUnmarshaller.unmarshal(XMLfile);
-			ArrayList<Product> listOfProducts = productsXML.getProducts();
-			
-			for(Product product : listOfProducts) {
-				jsonString += "{\"shortname\" : \"" + product.getShortname() + "\",";
-				jsonString += "\"id\" : " + product.getId() + ",";
-				jsonString += "\"sku\" : \"" + product.getSku() + "\",";
-				jsonString += "\"brand\" : \"" + product.getBrand() + "\",";
-				jsonString += "\"description\" : \"" + product.getDescription() + "\",";
-				jsonString += "\"price\" : " + product.getPrice() + "},";
+			InputStream fis = new FileInputStream(JSON_FILE);
+	        JsonReader jsonReader = Json.createReader(fis);
+	        JsonObject jsonObject = jsonReader.readObject();
+	        JsonArray jsonArray = jsonObject.getJsonArray("products");
+	        
+	        int index = 0;
+	        for(JsonValue value : jsonArray){
+	        	JsonObject strings = jsonArray.getJsonObject(index++);
+				jsonString += "{\"shortname\" : \"" + strings.getString("name") + "\",";
+				jsonString += "\"id\" : " + strings.getString("id") + ",";
+				jsonString += "\"brand\" : \"" + strings.getString("brand") + "\",";
+				jsonString += "\"description\" : \"" + strings.getString("discription") + "\",";
+				jsonString += "\"price\" : " + strings.getString("price") + "},";
 			}
 			jsonString = jsonString.substring(0, jsonString.length()-1);
 			jsonString += "]}";
 		} 
-		catch (JAXBException e) {
-		   e.printStackTrace();
+        catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		return jsonString;
 	}
@@ -70,13 +85,18 @@ public class ProductResource {
 	@Produces({"text/xml"})
 	public String getProductsXML() {
 		String content = "";
-		File XMLfile = new File("/Users/philippepossemiers/Desktop/Products.xml");
+		InputStream fis;
 		try {
-			content = new Scanner(XMLfile).useDelimiter("\\Z").next();
+			fis = new FileInputStream(JSON_FILE);
+		
+        JsonReader jsonReader = Json.createReader(fis);
+			JsonObject json = jsonReader.readObject();;
+			//content = XMLFormatter.toString(json);
 		} 
 		catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
+		
 		return content;
 	}
 
@@ -85,29 +105,31 @@ public class ProductResource {
 	@Produces({"application/json"})
 	public String getProductJSON(@PathParam("shortname") String shortname) {
 		String jsonString = "";
-		try {
-			// get all products
-			JAXBContext jaxbContext1 = JAXBContext.newInstance(ProductsXML.class);
-			Unmarshaller jaxbUnmarshaller = jaxbContext1.createUnmarshaller();
-			File XMLfile = new File("/Users/philippepossemiers/Desktop/Products.xml");
-			ProductsXML productsXML = (ProductsXML)jaxbUnmarshaller.unmarshal(XMLfile);
-			ArrayList<Product> listOfProducts = productsXML.getProducts();
+		
+			InputStream fis;
+			try {
+				fis = new FileInputStream(JSON_FILE);
 			
-			// look for the product, using the shortname
-			for(Product product : listOfProducts) {
-				if(shortname.equalsIgnoreCase(product.getShortname())) {
-					jsonString += "{\"shortname\" : \"" + product.getShortname() + "\",";
-					jsonString += "\"id\" : " + product.getId() + ",";
-					jsonString += "\"sku\" : \"" + product.getSku() + "\",";
-					jsonString += "\"brand\" : \"" + product.getBrand() + "\",";
-					jsonString += "\"description\" : \"" + product.getDescription() + "\",";
-					jsonString += "\"price\" : " + product.getPrice() + "}";
+	        JsonReader jsonReader = Json.createReader(fis);
+	        JsonObject jsonObject = jsonReader.readObject();
+	        JsonArray jsonArray = jsonObject.getJsonArray("products");
+	        
+	        int index = 0;
+	        for(JsonValue value : jsonArray){
+					JsonObject strings = jsonArray.getJsonObject(index++);
+					jsonString += "{\"shortname\" : \"" + strings.getString("name") + "\",";
+					jsonString += "\"id\" : " + strings.getString("id") + ",";
+					jsonString += "\"brand\" : \"" + strings.getString("brand") + "\",";
+					jsonString += "\"description\" : \"" + strings.getString("discription") + "\",";
+					jsonString += "\"price\" : " + strings.getString("price") + "},";
 				}
+			
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-		} 
-		catch (JAXBException e) {
-		   e.printStackTrace();
-		}
+
+		
 		return jsonString;
 	}
 	
